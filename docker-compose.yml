@@ -12,3 +12,10 @@ services:
       POSTGRES_DB: votes
     ports:
       - "5432:5432"
+
+  vote-frontend:
+    build: ./vote-frontend
+    ports:
+      - "5000:80"
+    depends_on:
+      - redis
