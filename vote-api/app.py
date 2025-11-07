@@ -1,27 +1,24 @@
-# vote-api/app.py
 import os
 import redis
 from fastapi import FastAPI, HTTPException
 
 app = FastAPI(title="Vote API")
+redis_host = os.getenv('REDIS_HOST', 'redis')  
+r = redis.Redis(host=redis_host, port=int(os.getenv("REDIS_PORT",6379)), decode_responses=True)
 
-# Connect to Redis
-redis_host = os.getenv('REDIS_HOST', 'redis')  # when in Docker, use service name
-r = redis.Redis(host=redis_host, port=6379, db=0)
+@app.get("/")
+def root():
+    return{"status":"ok"}
 
 @app.post("/vote/{option}")
-async def vote(option: str):
+def vote(option: str):
     if option not in ["cats", "dogs"]:
         raise HTTPException(status_code=400, detail="Invalid vote option")
-    r.incr(option)
-    return {"message": f"Vote recorded for {option}"}
+    r.rpush("votes", option)
+    return{"message":"queued"}
 
 @app.get("/results")
-async def get_results():
-    cats = int(r.get("cats") or 0)
-    dogs = int(r.get("dogs") or 0)
-    return {"cats": cats, "dogs": dogs}
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+def results():
+    cats = r.get("count:cats") or 0
+    dogs = r.get("count:dogs") or 0
+    return {"cats": int(cats), "dogs": int(dogs)}
